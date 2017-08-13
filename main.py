@@ -89,12 +89,22 @@ edit_keyboard = [['Адресс'],
 
 editKeyboardMarkup = ReplyKeyboardMarkup(edit_keyboard, one_time_keyboard=True)
 
+def print_data(update, data):
+    update.message.reply_text(
+        u"Квартир пройдено: "
+        + data["apartments"]["all"] +
+        u"\nКвартир открыло: "
+        + data["apartments"]["opened"] +
+        u"\nКомментарий:"+
+        data["comment"]
+    )
+
 def comment_input(bot, update, user_data):
     user_data['comment'] = update.message.text
     update.message.reply_text(
         "Спасибо за ваш отчет.\nВот данные которые вы предоставили:"
     )
-    update.message.reply_text(user_data)
+    print_data(update, user_data)
     update.message.reply_text(
         "Выберите в меню то, что хотите отредактировать или нажмите \"Отправить\""
         ", что бы отправить отчет.",
@@ -120,15 +130,14 @@ def edit_field(bot, update, user_data):
         user_data['userId'] = update.message.chat['id']
         user_data['username'] = update.message.chat['username']
         user_data['address']['name'] = "Адресс"
-        print user_data
-        r = requests.post("https://door-to-door-api.herokuapp.com/api/v1/building", data=user_data)
+        r = requests.post("https://door-to-door-api.herokuapp.com/api/v1/building", json=user_data)
         return CHOOSING
     update.message.reply_text("Вы не можете отредактировать: %s" % field)
     return EDIT
 
 def show_edit_message(update, user_data):
     update.message.reply_text("Данные отредактированы.\nТекущий отчет выглядит так:")
-    update.message.reply_text(user_data)
+    print_data(update, user_data)
     update.message.reply_text(
         "Выберите в меню то, что хотите отредактировать или нажмите \"Отправить\""
         ", что бы отправить отчет.",
@@ -172,7 +181,9 @@ def main():
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler('start', start), 
+                      RegexHandler(u'^Начать отчет$', new_report), 
+                      MessageHandler(Filters.location, address_input, pass_user_data=True)],
 
         states = {
             CHOOSING: [
